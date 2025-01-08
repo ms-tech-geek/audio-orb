@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Orb } from './components/Orb';
 import { Controls } from './components/Control';
+import { useAudioAnalyzer } from './hooks/useAudioAnalyzer';
 
 function App() {
   const [morphIntensity, setMorphIntensity] = useState(0.5);
@@ -10,6 +11,8 @@ function App() {
   const [size, setSize] = useState(1);
   const [color, setColor] = useState('#4338ca');
   const [isControlsOpen, setIsControlsOpen] = useState(false);
+
+  const { startAnalyzing, isActive, error } = useAudioAnalyzer();
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-gray-900 to-indigo-900">
@@ -24,7 +27,7 @@ function App() {
         />
         <OrbitControls enableZoom={false} />
       </Canvas>
-      
+
       <Controls
         morphIntensity={morphIntensity}
         setMorphIntensity={setMorphIntensity}
@@ -45,6 +48,19 @@ function App() {
           Allow microphone access • Make some noise • Customize with controls
         </p>
       </div>
+
+      {/* Start Button */}
+      {!isActive && (
+        <div className="absolute bottom-4 left-4">
+          <button
+            onClick={() => startAnalyzing()}
+            className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600"
+          >
+            Start Audio Analysis
+          </button>
+          {error && <p className="text-red-500 mt-2">{error}</p>}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export interface AudioAnalyzerConfig {
   fftSize?: number;
@@ -11,55 +11,42 @@ export function useAudioAnalyzer(config: AudioAnalyzerConfig = {}) {
   const [isActive, setIsActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const initAudio = async () => {
-      try {
-        const context = new AudioContext();
-        const analyzerNode = context.createAnalyser();
-        
-        analyzerNode.fftSize = config.fftSize || 2048;
-        analyzerNode.smoothingTimeConstant = config.smoothingTimeConstant || 0.8;
-
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = context.createMediaStreamSource(stream);
-        source.connect(analyzerNode);
-
+  const startAnalyzing = async () => {
+    try {
+      // Create or resume AudioContext
+      let context = audioContext;
+      if (!context) {
+        context = new AudioContext();
         setAudioContext(context);
-        setAnalyzer(analyzerNode);
-        setIsActive(true);
-        setError(null);
-      } catch (err) {
-        setError('Could not access microphone');
-        console.error('Audio initialization error:', err);
+      } else if (context.state === 'suspended') {
+        await context.resume();
       }
-    };
-
-    return () => {
-      if (audioContext) {
-        audioContext.close();
-      }
-    };
-  }, [config.fftSize, config.smoothingTimeConstant]);
+  
+      // Request microphone access and create AnalyserNode
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const source = context.createMediaStreamSource(stream);
+      const analyzerNode = context.createAnalyser();
+  
+      analyzerNode.fftSize = config.fftSize || 2048;
+      analyzerNode.smoothingTimeConstant = config.smoothingTimeConstant || 0.8;
+  
+      source.connect(analyzerNode);
+      setAnalyzer(analyzerNode);
+      setIsActive(true);
+      setError(null);
+    } catch (err) {
+      setError('Could not access microphone');
+      console.error('Error initializing audio:', err);
+    }
+  };
+  
 
   const getFrequencyData = () => {
     if (!analyzer) return new Uint8Array();
-    
     const dataArray = new Uint8Array(analyzer.frequencyBinCount);
     analyzer.getByteFrequencyData(dataArray);
     return dataArray;
   };
 
-  const startAnalyzing = () => {
-    if (!audioContext) {
-      const context = new AudioContext();
-      setAudioContext(context);
-    }
-  };
-
-  return {
-    isActive,
-    error,
-    getFrequencyData,
-    startAnalyzing
-  };
+  return { isActive, error, getFrequencyData, startAnalyzing };
 }
